@@ -1,0 +1,216 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+    <title>NeuroApp - Simulador de Avaliação</title>
+    <style>
+        * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
+        body {
+            background: linear-gradient(135deg, #6a11cb 0%, #2575fc 100%);
+            color: #333; min-height: 100vh; display: flex; align-items: center; justify-content: center; padding: 20px;
+        }
+        .container {
+            background-color: white; border-radius: 15px; box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+            width: 95%; max-width: 760px; padding: 26px; margin: 20px;
+        }
+        h1 { color: #2575fc; text-align: center; margin-bottom: 12px; }
+        p.lead { margin-bottom: 18px; color: #555; line-height: 1.5; text-align: center; }
+        form { display: grid; gap: 12px; }
+        .row { display: flex; gap: 12px; }
+        .row .field { flex: 1; }
+        label { display:block; font-size: 14px; color:#444; margin-bottom:6px; }
+        input[type="text"], input[type="number"], textarea {
+            width:100%; padding:10px 12px; border-radius:8px; border:1px solid #ddd;
+            font-size: 15px; outline: none;
+        }
+        textarea { min-height: 100px; resize: vertical; }
+        .actions { display:flex; gap:10px; margin-top:6px; }
+        button {
+            background-color: #2575fc; color:white; border:none; padding:12px 16px; border-radius:10px;
+            cursor:pointer; font-size:15px; transition: transform .08s ease, background-color .2s;
+            flex: 1;
+        }
+        button.secondary { background-color: #6a11cb; }
+        button:active { transform: translateY(1px); }
+        .result {
+            margin-top:18px; padding:16px; border-radius:10px; background-color:#e8f4fc; color:#113;
+            box-shadow: inset 0 1px 0 rgba(255,255,255,0.6);
+        }
+        .result h2 { margin-bottom:10px; color:#2575fc; font-size:18px; }
+        .card { background:white; border-radius:10px; padding:12px; margin-bottom:10px; box-shadow:0 6px 14px rgba(0,0,0,0.06); }
+        .tag { display:inline-block; padding:6px 10px; border-radius:999px; font-weight:600; font-size:13px; color:#fff; background:#6a11cb; margin-bottom:8px; }
+        .improvement { background:#fff7e6; border-left:4px solid #ffce3e; padding:10px; border-radius:8px; }
+        .direct { background:#eef9f1; border-left:4px solid #4caf50; padding:10px; border-radius:8px; }
+        .muted { color:#666; font-size:14px; margin-top:8px; }
+        .small { font-size:13px; color:#555; }
+        .clear { background:transparent; border:1px solid #ddd; color:#333; padding:10px; border-radius:8px; cursor:pointer; }
+        footer { margin-top:14px; text-align:center; font-size:13px; color:#666; }
+        @media (max-width:520px){
+            .row { flex-direction: column; }
+            .actions { flex-direction: column; }
+        }
+    </style>
+</head>
+<body>
+    <div class="container" role="main">
+        <h1>NeuroApp</h1>
+        <p class="lead">Um pequeno simulador que recebe seu nome, idade e pergunta — e responde com uma resposta direta + uma melhoria acolhedora.</p>
+
+        <form id="neuroForm" onsubmit="return handleSubmit(event)" aria-label="Formulário NeuroApp">
+            <div class="row">
+                <div class="field">
+                    <label for="name">Nome</label>
+                    <input id="name" type="text" placeholder="Ex: Ana" required />
+                </div>
+                <div class="field">
+                    <label for="age">Idade</label>
+                    <input id="age" type="number" min="1" max="120" placeholder="Ex: 23" required />
+                </div>
+            </div>
+
+            <div>
+                <label for="question">O que você quer compartilhar / perguntar?</label>
+                <textarea id="question" placeholder="Descreva como está se sentindo ou escreva sua pergunta..." required></textarea>
+            </div>
+
+            <div class="actions">
+                <button type="submit">Receber resposta</button>
+                <button type="button" class="secondary" onclick="quickExample()">Exemplo rápido</button>
+                <button type="button" class="clear" onclick="clearForm()">Limpar</button>
+            </div>
+        </form>
+
+        <div id="result" class="result hidden" aria-live="polite">
+            <div class="card">
+                <span id="greeting" class="tag">Olá!</span>
+                <div id="directAnswer" class="direct"><strong>Resposta:</strong>
+                    <div id="directText" class="small muted">—</div>
+                </div>
+            </div>
+
+            <div class="card improvement">
+                <strong>🌱 Melhoria / Reflexão:</strong>
+                <div id="improveText" class="small muted" style="margin-top:8px">—</div>
+            </div>
+
+            <div class="muted" id="note" style="margin-top:8px"></div>
+        </div>
+
+        <footer>Feito com ♥ — respostas geradas localmente (simples, empáticas e informativas).</footer>
+    </div>
+
+    <script>
+        // Função simples para "analisar" a pergunta e gerar respostas
+        function handleSubmit(event) {
+            event.preventDefault();
+            const name = document.getElementById('name').value.trim();
+            const ageStr = document.getElementById('age').value.trim();
+            const question = document.getElementById('question').value.trim();
+
+            if(!name || !ageStr || !question) return;
+
+            const age = parseInt(ageStr, 10);
+            showResult(name, age, question);
+        }
+
+        function showResult(name, age, question) {
+            const greetingEl = document.getElementById('greeting');
+            const directText = document.getElementById('directText');
+            const improveText = document.getElementById('improveText');
+            const resultBox = document.getElementById('result');
+            const note = document.getElementById('note');
+
+            greetingEl.textContent = `Oi ${name}!`;
+
+            // Gera resposta direta (simples, prática)
+            const direct = generateDirectAnswer(question, age);
+            directText.textContent = direct;
+
+            // Gera melhoria/reflexão (acolhedora, específica por idade)
+            const improvement = generateImprovement(question, age);
+            improveText.textContent = improvement;
+
+            // nota contextual pequena
+            note.textContent = "Lembre-se: esta é uma resposta automática de apoio. Para questões de saúde mental ou física, procure um profissional.";
+
+            // animação simples mostrando o card
+            resultBox.classList.remove('hidden');
+            resultBox.style.opacity = 0;
+            setTimeout(()=> resultBox.style.opacity = 1, 30);
+        }
+
+        // heurística simples para resposta direta
+        function generateDirectAnswer(text, age) {
+            const t = text.toLowerCase();
+
+            if (t.includes('cans') || t.includes('sono') || t.includes('dorme')) {
+                return "Tente regular horários de sono (7–8h idealmente), evite eletrônicos antes de deitar e teste uma rotina leve de relaxamento antes de dormir.";
+            }
+            if (t.includes('ansied') || t.includes('ansios') || t.includes('nervos')) {
+                return "Respirações profundas e pausas curtas podem ajudar. Procure técnicas de grounding (ex.: 5-4-3-2-1) e, se necessário, apoio profissional.";
+            }
+            if (t.includes('estud') || t.includes('prova') || t.includes('concent')) {
+                return "Divida o estudo em blocos curtos (25–50 min) com pequenas pausas; revise com testes ativos e priorize sono regular.";
+            }
+            if (t.includes('triste') || t.includes('depress') || t.includes('sozinh')) {
+                return "Fale com alguém de confiança sobre isso. Pequenos hábitos (luz do dia, movimento leve, contato social) ajudam, e buscar apoio profissional é importante se persistir.";
+            }
+            if (t.includes('comer') || t.includes('dieta') || t.includes('peso')) {
+                return "Procure manter refeições regulares e balanceadas; pequenas mudanças consistentes são melhores que dietas drásticas. Consulte profissional se precisar.";
+            }
+            // Default curto e objetivo
+            return "Obrigado por compartilhar. Uma estratégia prática é dividir o desafio em passos pequenos e testáveis — escolha um primeiro passo simples e veja como se sente.";
+        }
+
+        // melhoria mais harmônica, com ajuste por idade
+        function generateImprovement(text, age) {
+            const base = [
+                "Valorize pequenos ganhos diários — consistência vence a urgência.",
+                "Tente integrar uma rotina suave: sono regular, hidratação, atividade leve e pausas para respirar.",
+                "Ao observar progresso, anote 1–2 coisas que funcionaram para repetir depois."
+            ];
+
+            // tailor by age groups
+            let ageNote = "";
+            if (!isFinite(age) || age <= 0) {
+                ageNote = "Independente da idade, comece com passos pequenos e seja gentil consigo mesmo(a).";
+            } else if (age <= 17) {
+                ageNote = "Na sua fase, busque apoio de familiares/professores e priorize sono e rotina escolar — pequenas rotinas fazem grande diferença.";
+            } else if (age <= 30) {
+                ageNote = "Nesta fase, equilibrar estudo/trabalho e vida social é chave. Experimente micro-hábitos (10–20 min) que incrementem bem-estar sem sobrecarregar.";
+            } else if (age <= 50) {
+                ageNote = "Procure equilibrar responsabilidades com autocuidado: pequenas rotinas de movimento e momentos de desconexão podem melhorar muito o dia a dia.";
+            } else {
+                ageNote = "Foque em rotinas que favoreçam mobilidade, sono e contato social. Pequenas adaptações na rotina costumam trazer benefícios significativos.";
+            }
+
+            // combine a mensagem
+            // pick one base recommendation depending on keyword density
+            const t = text.toLowerCase();
+            let pick = base[0];
+            if (t.length % 3 === 0) pick = base[1];
+            else if (t.length % 2 === 0) pick = base[2];
+
+            return `${pick} ${ageNote} Seja gentil consigo — progresso é feito de passos pequenos e repetidos.`;
+        }
+
+        // small helpers
+        function clearForm() {
+            document.getElementById('neuroForm').reset();
+            document.getElementById('result').classList.add('hidden');
+        }
+
+        function quickExample() {
+            document.getElementById('name').value = "Ana";
+            document.getElementById('age').value = "23";
+            document.getElementById('question').value = "Estou me sentindo muito cansada e sem concentração para estudar. O que posso fazer?";
+            // auto-submit for quick demo
+            setTimeout(()=> document.getElementById('neuroForm').dispatchEvent(new Event('submit', {cancelable: true})), 120);
+        }
+
+        // accessibility: submit with Enter from textarea? keep standard behavior (Shift+Enter for newline)
+        // nothing else required
+    </script>
+</body>
+</html>
